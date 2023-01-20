@@ -52,6 +52,7 @@ mkShell {
     python3
     utillinux
     xfsprogs
+    btrfs-progs
     gnuplot
     libunwind
   ] ++ (if (nospdk) then [ libspdk-dev.buildInputs ] else [ libspdk-dev ])

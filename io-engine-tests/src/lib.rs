@@ -134,7 +134,7 @@ pub fn mayastor_test_init() {
         })
     }
 
-    ["dd", "mkfs.xfs", "mkfs.ext4", "cmp", "fsck", "truncate"]
+    ["dd", "mkfs.xfs", "mkfs.ext4", "mkfs.btrfs", "cmp", "fsck", "truncate"]
         .iter()
         .for_each(|binary| {
             if binary_present(binary).is_err() {
@@ -191,8 +191,9 @@ pub fn fscheck(device: &str) {
 
 pub fn mkfs(path: &str, fstype: &str) -> bool {
     let (fs, args) = match fstype {
-        "xfs" => ("mkfs.xfs", ["-f", path]),
-        "ext4" => ("mkfs.ext4", ["-F", path]),
+        "xfs" => ("mkfs.xfs", vec!["-f", path]),
+        "ext4" => ("mkfs.ext4", vec!["-F", path]),
+        "btrfs" => ("mkfs.btrfs", vec!["-f", "-m", "single", "-d", "single", path]),
         _ => {
             panic!("unsupported fstype");
         }

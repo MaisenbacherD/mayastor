@@ -19,6 +19,7 @@
 , utillinux
 , writeScriptBin
 , xfsprogs
+, btrfs-progs
 , runCommand
 , img_tag ? ""
 }:
