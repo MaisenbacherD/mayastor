@@ -390,10 +390,28 @@ impl<'n> NexusBio<'n> {
                 self.as_ptr().cast(),
             );
         } else {
-            return Err(CoreError::NvmeIoPassthruDispatch {
-                source: Errno::EOPNOTSUPP,
-                opcode: orig_nvme_cmd.opc(),
-            });
+            match orig_nvme_cmd.opc() {
+                // Zone Management Send
+                121 => return hdl.emulate_zone_mgmt_send_io_passthru(
+                    &passthru_nvme_cmd,
+                    buffer,
+                    buffer_size,
+                    Self::child_completion,
+                    self.as_ptr().cast(),
+                ),
+                // Zone Management Receive
+                122 => return hdl.emulate_zone_mgmt_recv_io_passthru(
+                    &passthru_nvme_cmd,
+                    buffer,
+                    buffer_size,
+                    Self::child_completion,
+                    self.as_ptr().cast(),
+                ),
+                _ => return Err(CoreError::NvmeIoPassthruDispatch {
+                    source: Errno::EOPNOTSUPP,
+                    opcode: orig_nvme_cmd.opc(),
+                }),
+            }
         }
     }
 
