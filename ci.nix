@@ -55,6 +55,8 @@ mkShell {
     btrfs-progs
     gnuplot
     libunwind
+    nasm
+    yasm
   ] ++ (if (nospdk) then [ libspdk-dev.buildInputs ] else [ libspdk-dev ])
   ++ pkgs.lib.optional (!norust) channel.stable
   ++ pkgs.lib.optional (!norust) channel.nightly;

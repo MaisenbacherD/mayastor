@@ -188,6 +188,8 @@ impl Default for NvmfTcpTransportOpts {
 impl From<NvmfTcpTransportOpts> for spdk_nvmf_transport_opts {
     fn from(o: NvmfTcpTransportOpts) -> Self {
         Self {
+            reserved29: Default::default(),
+            reserved61: Default::default(),
             max_queue_depth: o.max_queue_depth,
             max_qpairs_per_ctrlr: o.max_qpairs_per_ctrl,
             in_capsule_data_size: o.in_capsule_data_size,
@@ -414,6 +416,7 @@ impl From<spdk_bdev_opts> for BdevOpts {
 impl From<&BdevOpts> for spdk_bdev_opts {
     fn from(o: &BdevOpts) -> Self {
         Self {
+            reserved9: Default::default(),
             bdev_io_pool_size: o.bdev_io_pool_size,
             bdev_io_cache_size: o.bdev_io_cache_size,
             bdev_auto_examine: false,
@@ -501,6 +504,10 @@ impl GetOpts for PosixSocketOpts {
             enable_zerocopy_send_server: self.enable_zerocopy_send_server,
             enable_zerocopy_send_client: self.enable_zerocopy_send_client,
             zerocopy_threshold: self.zerocopy_threshold,
+            enable_ktls: Default::default(),
+            psk_identity: std::ptr::null_mut(),
+            psk_key: std::ptr::null_mut(),
+            tls_version: Default::default(),
         };
 
         let size = std::mem::size_of::<spdk_sock_impl_opts>() as u64;
