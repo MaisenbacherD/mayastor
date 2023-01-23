@@ -83,7 +83,7 @@ impl SpdkBlockDevice {
     pub fn lookup_by_name(name: &str) -> Option<Box<dyn BlockDevice>> {
         debug!("Searching SPDK devices for '{}'...", name);
         let bdev = UntypedBdev::lookup_by_name(name)?;
-        debug!("SPDK {} device found: '{}'", bdev.driver(), name);
+        debug!("SPDK {} device found: '{}'", bdev.driver(), bdev.name());
         Some(Box::new(SpdkBlockDevice::new(bdev)))
     }
 
@@ -133,8 +133,44 @@ impl BlockDevice for SpdkBlockDevice {
     }
     /// returns true if the IO type is supported
     fn io_type_supported(&self, io_type: IoType) -> bool {
+        match io_type {
+            //IoType::NvmeIo => true,
+            _ => self.io_type_supported_by_device(io_type),
+        }
+    }
+
+    fn io_type_supported_by_device(&self, io_type: IoType) -> bool {
         self.0.io_type_supported(io_type)
     }
+
+    fn is_zoned(&self) -> bool {
+        self.0.is_zoned()
+    }
+
+    fn get_zone_size(&self) -> u64 {
+        self.0.get_zone_size()
+    }
+
+    fn get_num_zones(&self) -> u64 {
+        self.0.get_num_zones()
+    }
+
+    fn get_max_zone_append_size(&self) -> u32 {
+        self.0.get_max_zone_append_size()
+    }
+
+    fn get_max_open_zones(&self) -> u32 {
+        self.0.get_max_open_zones()
+    }
+
+    fn get_max_active_zones(&self) -> u32 {
+        self.0.get_max_active_zones()
+    }
+
+    fn get_optimal_open_zones(&self) -> u32 {
+        self.0.get_optimal_open_zones()
+    }
+
     /// returns the IO statistics
     async fn io_stats(&self) -> Result<BlockDeviceIoStats, CoreError> {
         self.0.stats_async().await

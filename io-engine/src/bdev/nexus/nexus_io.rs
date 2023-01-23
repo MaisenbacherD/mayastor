@@ -193,6 +193,13 @@ impl<'n> NexusBio<'n> {
             | IoType::Reset
             | IoType::Unmap
             | IoType::Flush => self.submit_all(),
+            IoType::ZoneAppend => {
+                warn!("ZoneAppend is explicitly disallowed, otherwise reading from different replicas won't work.");
+                self.fail();
+                Err(CoreError::NotSupported {
+                    source: Errno::EOPNOTSUPP,
+                })
+            }
             IoType::NvmeAdmin => {
                 self.fail();
                 Err(CoreError::NotSupported {
