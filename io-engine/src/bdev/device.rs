@@ -22,6 +22,7 @@ use spdk_rs::{
         spdk_bdev_unmap_blocks,
         spdk_bdev_write_zeroes_blocks,
         spdk_bdev_writev_blocks,
+        spdk_bdev_nvme_io_passthru,
     },
     nvme_admin_opc,
     BdevOps,
@@ -30,27 +31,30 @@ use spdk_rs::{
     IoType,
 };
 
-use crate::core::{
-    mempool::MemoryPool,
-    Bdev,
-    BdevHandle,
-    BlockDevice,
-    BlockDeviceDescriptor,
-    BlockDeviceHandle,
-    BlockDeviceIoStats,
-    CoreError,
-    DeviceEventDispatcher,
-    DeviceEventSink,
-    DeviceEventType,
-    DeviceIoController,
-    IoCompletionCallback,
-    IoCompletionCallbackArg,
-    IoCompletionStatus,
-    NvmeStatus,
-    ReadMode,
-    UntypedBdev,
-    UntypedBdevHandle,
-    UntypedDescriptorGuard,
+use crate::{
+    core::{
+        mempool::MemoryPool,
+        Bdev,
+        BdevHandle,
+        BlockDevice,
+        BlockDeviceDescriptor,
+        BlockDeviceHandle,
+        BlockDeviceIoStats,
+        CoreError,
+        DeviceEventDispatcher,
+        DeviceEventSink,
+        DeviceEventType,
+        DeviceIoController,
+        IoCompletionCallback,
+        IoCompletionCallbackArg,
+        IoCompletionStatus,
+        NvmeStatus,
+        ReadMode,
+        UntypedBdev,
+        UntypedBdevHandle,
+        UntypedDescriptorGuard,
+    },
+    ffihelper::FfiResult,
 };
 
 /// TODO
@@ -531,6 +535,44 @@ impl BlockDeviceHandle for SpdkBlockDeviceHandle {
         Err(CoreError::NvmeAdminDispatch {
             source: Errno::ENXIO,
             opcode: nvme_admin_opc::IDENTIFY.into(),
+        })
+    }
+
+    fn submit_io_passthru(
+        &self,
+        nvme_cmd: &spdk_rs::libspdk::spdk_nvme_cmd,
+        buffer: *mut c_void,
+        buffer_size: u64,
+        cb: IoCompletionCallback,
+        cb_arg: IoCompletionCallbackArg,
+    ) -> Result<(), CoreError> {
+
+        let ctx = alloc_bdev_io_ctx(
+            IoType::NvmeIo,
+            IoCtx {
+                device: self.device,
+                cb,
+                cb_arg,
+            },
+            0,
+            0,
+        )?;
+
+        let (desc, ch) = self.handle.io_tuple();
+
+        unsafe {
+            spdk_bdev_nvme_io_passthru(
+                desc,
+                ch,
+                nvme_cmd,
+                buffer,
+                buffer_size,
+                Some(bdev_io_completion),
+                ctx as *mut c_void,
+            )
+        }.to_result(|e| CoreError::NvmeIoPassthruDispatch {
+            source: Errno::from_i32(e),
+            opcode: nvme_cmd.opc(),
         })
     }
 
