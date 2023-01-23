@@ -37,6 +37,8 @@ use super::{
 use crate::{
     bdev::{
         device_destroy,
+        device_lookup,
+        device_create,
         nexus::{nexus_persistence::PersistentNexusInfo, NexusIoSubsystem},
     },
     core::{
@@ -1336,6 +1338,20 @@ pub async fn nexus_create_v2(
     }
 }
 
+async fn create_children_devices(
+    children: &[String],
+) -> Result<Vec<(String, String)>, Error> {
+    let mut children_devices = Vec::new();
+    for uri in children {
+        let device_name = device_create(uri).await.unwrap();
+        if device_lookup(&device_name).unwrap().is_zoned() && children.len() > 1 {
+            return Err(Error::ZonedReplicationNotImplemented {});
+        }
+        children_devices.push((uri.to_string(), device_name));
+    }
+    Ok(children_devices)
+}
+
 async fn nexus_create_internal(
     name: &str,
     size: u64,
@@ -1371,6 +1387,8 @@ async fn nexus_create_internal(
         return Ok(());
     }
 
+    let mut children_devices = create_children_devices(children).await?;
+
     // Create a new Nexus object, and immediately add it to the global list.
     // This is necessary to ensure proper cleanup, as the code responsible for
     // closing a child assumes that the nexus to which it belongs will appear
@@ -1385,8 +1403,9 @@ async fn nexus_create_internal(
         nexus_info_key,
     );
 
-    for uri in children {
-        if let Err(error) = nexus_bdev.data_mut().new_child(uri).await {
+
+    for (uri, device_name) in children_devices {
+        if let Err(error) = nexus_bdev.data_mut().new_child(&uri, &device_name).await {
             error!(
                 "{n:?}: failed to add child '{uri}': {e}",
                 n = nexus_bdev.data(),
