@@ -40,6 +40,7 @@ use crate::core::{
     DeviceCommand,
     GenericStatusCode,
     IoCompletionStatus,
+    is_zoned_nvme_error,
     IoStatus,
     IoSubmissionFailure,
     IoType,
@@ -265,10 +266,20 @@ impl<'n> NexusBio<'n> {
         if status == IoCompletionStatus::Success {
             self.ctx_mut().successful += 1;
         } else {
+            error!(
+                "{:?}: IO completion for '{}' failed: {:?}, ctx={:?}",
+                self,
+                child.device_name(),
+                status,
+                self.ctx()
+            );
             self.ctx_mut().status = IoStatus::Failed;
-            self.ctx_mut().failed += 1;
 
-            self.completion_error(child, status);
+            // Don't take zoned child out on zoned related nvme errors
+            if !is_zoned_nvme_error(status) {
+                self.ctx_mut().failed += 1;
+                self.completion_error(child, status);
+            }
         }
 
         if self.ctx().in_flight > 0 {
